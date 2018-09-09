@@ -1,4 +1,8 @@
 import csv
+import os
+
+if not os.path.exists('OutputFiles'):
+    os.makedirs('OutputFiles')
 
 
 def BrowseFile():

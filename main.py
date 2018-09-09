@@ -4,14 +4,13 @@ from UserInteraktion import toXlsFile
 dbName = 'Sku_DB'
 SkuDB = DB.mainDB(dbName)
 SkuDB.mainTab = 'sku_info'
-ordereDB = DB.OrderDB(dbName)
-ordereDB.mainTab = 'ordered'
 
 def headerPrew():
     print('-'*50)
     print('\nHere what i can:')
     print('1: import a csv file into my DB!')
     print('2: show positions require to turn MTS on')
+    print('3: on the way monitoring')
     print('0: manual input SQL reqest to DB')
     print('\n')
 
@@ -53,7 +52,8 @@ def main():
             
 #--------------------------------------------------------------------------------------------------------
         elif chose == '3':
-            print('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA')
+            ordereDB = DB.OrderDB(dbName)
+            ordereDB.mainTab = 'ordered'
             ordereDB.updateDBfrom(SkuDB.mainTab)
         else:
             print('Wrong reqest! try again')

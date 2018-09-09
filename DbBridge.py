@@ -6,9 +6,14 @@ from UserInteraktion import writErr, toXlsFile
 class DbSql(object):
 
     def __init__(self,DBname):
+        import os
         self.DBname = DBname
         self.mainTab = '' #need manualy name it!!!
-        self.DBpath = "DataBase\\" + DBname + '.db'
+        directory = 'DataBase'
+        splt = '\\'
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        self.DBpath =  os.getcwd() + splt + directory + splt + self.DBname + '.db'
         self.openDB()
 
     def openDB(self):
@@ -16,7 +21,7 @@ class DbSql(object):
         Connect DB file to class
         '''
         self.DBConnect = sqlite3.connect(self.DBpath)
-        self.DBConnect.text_factory = lambda x: str(x, "utf-8", "ignore")
+        #self.DBConnect.text_factory = lambda x: str(x, 'utf-8', 'ignore')
         self.DBCursor = self.DBConnect.cursor()
 
     def reqwToDB(self, Input):
@@ -67,9 +72,15 @@ class mainDB(DbSql):
     def progBar(self,countList):
         """
         return progress bar of exchange
+        howto:
+            1.name the variable with this func
+            1.print(var.__next__())
         """
         from copy import copy
-        self.LineCount = self.getLenFile(countList)
+        try:
+            self.LineCount = self.getLenFile(countList)
+        except TypeError: # if its not a file:
+            self.LineCount = len(countList)
         self.progres = copy(self.LineCount)
         while self.progres >= 0:
             self.progres = self.progres-1
@@ -86,12 +97,12 @@ class mainDB(DbSql):
             with open(self.FILE,'r', encoding="utf8") as self.file:
                 self.headers = self.sqlFormat(self.file) #transform headers contains in HEADERS var
                 self.SqlType = self.typeAsembler(self.headers) #determine the type of column
-                self.Bar = self.progBar(self.FILE)
+                Bar = self.progBar(self.FILE)
                 self.createMainTab(self.SqlType)
                 print('Starting import!')
                 while True:
                     try:
-                        print(self.Bar.__next__()) #progress bar
+                        print(Bar.__next__()) #progress bar
 
                         self.Sku = self.toRealType(self.file,self.headers)
                         if self.Sku == [0,]:
@@ -196,17 +207,23 @@ class OrderDB(mainDB):
         print('Starting update ordered sku...')
         headers = 'sku, name, warehouse, suplayer, moq, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
         headersType = self.typeAsembler(headers.split(', '))
+        countRows = 0
         data = [headers.split(', '),] # first row is headers
         self.createMainTab(headersType) #create if not exists...
         #output:
         for row in self.DBCursor.execute("SELECT {} FROM {} WHERE on_the_way<>0 ORDER BY suplayer".format(headers ,DBtable)):
             data.append(row)
+
+        bar = self.progBar(data[1:])
         #input:
         for row in data[1:]:
+            print(bar.__next__())
             self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.mainTab, tuple(data[0]), tuple(row)))
+            countRows += 1
         #end
         self.DBConnect.commit()
         self.DBConnect.close()
+        print('update success')
 
 
 if __name__ == '__main__':

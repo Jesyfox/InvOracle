@@ -26,7 +26,7 @@ class DbSql(object):
 
     def reqwToDB(self, Input):
         '''
-        manual reqwest to sql terminal, result return as list
+        manual reqwest to sql terminal, result return a list
         '''
         self.openDB()
         list_ = []
@@ -34,7 +34,7 @@ class DbSql(object):
             for row in self.DBCursor.execute(Input):
                 list_.append(row) 
         except sqlite3.OperationalError as Error:
-            print('Error: ', Error)
+            writErr(str(Error))
         self.DBConnect.close()
         return list_
 
@@ -45,6 +45,9 @@ class DbSql(object):
             res.append(row[1])
         return tuple(res)
 
+    def getSkuFrom(self, warehouse_code, sku):
+        return self.reqwToDB('SELECT {0} FROM {1} WHERE warehouse_code = {2} AND sku = {3}'.format(self.headers, self.mainTab, warehouse_code, sku))
+
 class mainDB(DbSql):
 
     def turnMtsOn(self):
@@ -53,7 +56,7 @@ class mainDB(DbSql):
         '''
         from ConstAndOptions import NOT_ACTIVE, NOT_IN_INVENTORY
         self.openDB()
-        headers = 'sku, name, warehouse, matrix, nomenclature_1'
+        headers = 'sku, name, warehouse, matrix, nomenclature_1, warehouse_code'
         nomencl = []
         endFile = []
         for row in self.DBCursor.execute("SELECT {} FROM {} WHERE mts=0 ORDER BY nomenclature_1".format(headers ,self.mainTab)):
@@ -67,7 +70,7 @@ class mainDB(DbSql):
         #create new db table even if its exists
         self.DBCursor.execute('DROP TABLE IF EXISTS {}'.format(self.mainTab))
         self.DBCursor.execute('CREATE TABLE {} {}'.format(self.mainTab ,headersType))
-        self.DBCursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS CombineKey ON {} (sku,warehouse)'.format(self.mainTab))
+        self.DBCursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS CombineKey ON {} (sku,warehouse_code)'.format(self.mainTab))
 
     def progBar(self,countList):
         """
@@ -205,13 +208,13 @@ class OrderDB(mainDB):
     def updateDBfrom(self, DBtable):
         self.openDB()
         print('Starting update ordered sku...')
-        headers = 'sku, name, warehouse, suplayer, moq, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
-        headersType = self.typeAsembler(headers.split(', '))
-        countRows = 0
-        data = [headers.split(', '),] # first row is headers
+        self.headers = 'sku, name, warehouse, suplayer, warehouse_code, moq, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
+        headersType = self.typeAsembler(self.headers.split(', '))
+        rowsCounted = 0
+        data = [self.headers.split(', '),] # first row is headers
         self.createMainTab(headersType) #create if not exists...
         #output:
-        for row in self.DBCursor.execute("SELECT {} FROM {} WHERE on_the_way<>0 ORDER BY suplayer".format(headers ,DBtable)):
+        for row in self.DBCursor.execute("SELECT {} FROM {} WHERE on_the_way<>0 ORDER BY suplayer".format(self.headers ,DBtable)):
             data.append(row)
 
         bar = self.progBar(data[1:])
@@ -219,11 +222,11 @@ class OrderDB(mainDB):
         for row in data[1:]:
             print(bar.__next__())
             self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.mainTab, tuple(data[0]), tuple(row)))
-            countRows += 1
+            rowsCounted += 1
         #end
         self.DBConnect.commit()
         self.DBConnect.close()
-        print('update success')
+        print('update success \n{0} rows was exported'.format(rowsCounted))
 
 
 if __name__ == '__main__':

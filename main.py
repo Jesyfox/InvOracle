@@ -55,6 +55,10 @@ def main():
             ordereDB = DB.OrderDB(dbName)
             ordereDB.mainTab = 'ordered'
             ordereDB.updateDBfrom(SkuDB.mainTab)
+
+        elif chose == '4':
+            print(ordereDB.getSkuFrom(7, 10947)) #testing
+
         else:
             print('Wrong reqest! try again')
 

@@ -23,7 +23,8 @@ def BrowseFile():
 
 def writErr(text):
     '''
-    say the error and return to main
+    print Error masage
+    and write to Errorlog file
     '''
     print('-'*50)
     print('Error!: ',text)

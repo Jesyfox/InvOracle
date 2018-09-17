@@ -50,7 +50,7 @@ class DbSql(object):
     def get_row(self, sku_row:tuple):
         ''' 
         Takes tuple (warehouse_code, sku) and
-        returns one sku from warehouse, as dictionary - header:value 
+        returns full row information as dictionary - header:value 
         '''
         warehouse_code, sku = sku_row
         headers = self.sql_format(self.get_headers())
@@ -72,7 +72,7 @@ class DbSql(object):
 
 
     def sql_format(self, List):
-        ''' make readable list for sql cursor '''
+        ''' make readable for sql cursor list '''
         res = str()
         for i in List:
             res += str(i) + ', '
@@ -178,7 +178,7 @@ class mainDB(DbSql):
     def typeAsembler(self, headers):
         '''
         detects type of header (first row in csv file), 
-        combine them with constant and return  for create a table 
+        combine them with constant and return to create a table 
         '''
         from ConstAndOptions import HEADERS_TYPE
 
@@ -199,7 +199,7 @@ class mainDB(DbSql):
             return 0
 
         for i in res: #transform to string like
-            toStr = toStr + str(i) + ', '
+            toStr = toStr + str(i) + ', ' #CAN WE MAKE IT WITH sql_format()???
         toStr = toStr[0:-2] + ')'
         return toStr
 

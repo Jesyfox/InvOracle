@@ -4,12 +4,18 @@ def ob_opb_check(ob_ord, opb_ord, ob_arr):
     '''
     ob - state of buffer fullness on right moment
     opb - state of buffer fullness with ordered count
+    ob_ord - last leftover
+    opb_ord - last leftover with order
+    ob_arr - fresh leftover 
     '''
     if ob_ord < ob_arr <= opb_ord: #if order arrived 
-        return 'DONE'
+        return ob_arr/opb_ord*100
     elif ob_arr <= ob_ord: # if order didnt arrive
-        return 'FAIL'
+        return (ob_arr/ob_ord*100)-100
+    elif ob_arr > opb_ord: #if order more than expected
+        return (ob_arr/opb_ord)*100
     else: #if somthing wrong
+        print('you cant be here!', 'ob_ord:', ob_ord, 'opb_ord:',opb_ord, 'ob_arr:', ob_arr, sep='\n')
         return '???'
 
 
@@ -19,7 +25,7 @@ def arrival_check(ordered_db, main_db):
         ordered state hold - ordered_db(updated yesterday or later)
         arrival(or  not) hold - main_db(updated today)
     after processing row will deleted from - ordered_db 
-    Write result to xls file
+    result write to xls file
     '''
     ordered_list = ordered_db.get_all_items()
     headers = list(ordered_db.get_headers())
@@ -39,6 +45,10 @@ def arrival_check(ordered_db, main_db):
 
     res[0].append('status')
     toXlsFile(res, 'arrival_check')
+
+
+if __name__ == "__main__":
+    print(ob_opb_check(24, 97, 56))
 
 
 

@@ -61,6 +61,11 @@ def main():
             #testin
             OC.arrival_check(orderDB, SkuDB)
 
+        elif chose == 'kill': #careful with this!
+            SkuDB.kill_all()
+            orderDB.kill_all()
+            print('its all ogre now!')
+
         else:
             print('Wrong reqest! try again')
 

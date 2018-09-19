@@ -70,6 +70,11 @@ class DbSql(object):
         self.DBConnect.commit()
         self.DBConnect.close()
 
+    def kill_all(self):
+        self.open_db()
+        self.DBCursor.execute('DELETE FROM {0}'.format(self.main_table))
+        self.DBConnect.commit()
+        self.DBConnect.close()
 
     def sql_format(self, List):
         ''' make readable for sql cursor list '''
@@ -240,7 +245,7 @@ class mainDB(DbSql):
 class OrderDB(mainDB):
     def __init__(self, DBname, tabName):
         super(OrderDB, self).__init__(DBname, tabName)
-        self.headers = 'sku, name, warehouse, suplayer, warehouse_code, moq, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
+        self.headers = 'sku, name, warehouse, suplayer, warehouse_code, moq, adu, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
 
     def update_db_from(self, DBtable):
         '''

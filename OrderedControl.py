@@ -34,21 +34,28 @@ def arrival_check(ordered_db, main_db):
     res = [headers, ]
     sku_row = []
     for row in ordered_list:
-        print('row:', row)
         ordered = ordered_db.get_row(row)
         arrival = main_db.get_row(row)
 
-        if arrival['on_the_way'] == 0: # If the waiting time for the order is over
-            for header in headers:
-                sku_row.append(arrival[header])
+        try:
+            if arrival['on_the_way'] == 0: # If the waiting time for the order is over
+                print('row:', row)
+                for header in headers:
+                    sku_row.append(arrival[header])
 
-            #status col #1:
-            status_col = ob_opb_check(ordered['leftover'], ordered['on_the_way'], arrival['leftover'])
-            if isinstance(status_col, float): status_col = round(status_col) 
-            sku_row.append(status_col)
-            #______ col #n
+                #status col #1:
+                status_col = ob_opb_check(ordered['leftover'], ordered['on_the_way'], arrival['leftover'])
+                if isinstance(status_col, float): status_col = round(status_col) 
+                sku_row.append(status_col)
+                #______ col #n
+                res.append(sku_row)
+                print('len:',len(res))
+        except TypeError:
+            print('ERROR!', row, 'closed in matirix?')
+            pass
 
             res.append(sku_row)
+            print('len:',len(res))
         sku_row = []
         #ordered_db.delete_row(row)
     #add additional column

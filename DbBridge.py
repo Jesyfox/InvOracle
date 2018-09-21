@@ -247,39 +247,35 @@ class OrderDB(mainDB):
         super(OrderDB, self).__init__(DBname, tabName)
         self.headers = 'sku, name, warehouse, suplayer, warehouse_code, moq, adu, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
 
+    def createmain_table(self,headersType):
+        #create new db table even if its exists
+        self.DBCursor.execute('CREATE TABLE IF NOT EXISTS {} {}'.format(self.main_table ,headersType))
+        self.DBCursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS OrderedKey ON {} (sku, warehouse_code)'.format(self.main_table))
+
+
     def update_db_from(self, DBtable):
         '''
-        takes all rows with "on_the_way > 0" to main_table
+        takes all rows with "on_the_way > 0" from mother-table to main_table in class
         '''
         self.open_db()
         print('Starting update ordered sku...')
         headersList = self.headers.split(', ')
         headersType = self.typeAsembler(headersList)
-        data = [] # first row is headers
 
         self.createmain_table(headersType) #create if not exists...
 
-        #output from mainDB:
-        for row in self.DBCursor.execute("SELECT {} FROM {} WHERE on_the_way<>0 ORDER BY suplayer".format(self.headers ,DBtable)):
-            data.append(row)
+        self.DBCursor.execute('''
+            INSERT OR REPLACE INTO {0}
+            SELECT {1} FROM {2} WHERE on_the_way<>0 ORDER BY suplayer
+            '''.format(self.main_table, self.headers, DBtable))
 
-        #input:
-        bar = self.progBar(data)
-        rowsCounted = 0
-        for row in data:
-            print(bar.__next__())
-            self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.main_table, tuple(headersList), tuple(row)))
-            rowsCounted += 1
-        #end
         self.DBConnect.commit()
         self.DBConnect.close()
-        print('update success \n{0} rows was exported'.format(rowsCounted))
+        print('update success!')
 
-    def get_all_items(self):
-        ''' return list of all unique items (warehouse_code, sku) '''
-        headers = 'warehouse_code, sku'
+    def get_all_items(self, headers='warehouse_code, sku'):
+        ''' return all items as list of headers '''
         return self.reqwest_to_db('SELECT {} FROM {}'.format(headers, self.main_table))
-
 
 if __name__ == '__main__':
     pass

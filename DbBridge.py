@@ -63,10 +63,13 @@ class DbSql(object):
             print('get_row: error: {}'.format(Err))
             return None
 
-    def delete_row(self, sku_row:tuple):
+    def delete_rows(self, sku_row):
         self.open_db()
-        warehouse_code, sku = sku_row
-        self.DBCursor.execute('DELETE FROM {0} WHERE warehouse_code = {1} AND sku = {2}'.format(self.main_table ,warehouse_code, sku))
+        for warehouse_code, sku in sku_row:
+            self.DBCursor.execute('''
+                DELETE FROM {0} 
+                WHERE warehouse_code = {1} 
+                AND sku = {2}'''.format(self.main_table ,warehouse_code, sku))
         self.DBConnect.commit()
         self.DBConnect.close()
 
@@ -130,6 +133,12 @@ class mainDB(DbSql):
 
 
     def update_db_from(self):
+        '''
+        import a csv type file into main data base
+        file takes from BrowseFile() func.
+        if import done without errors return True
+        else returns False
+        '''
         print('Starting update main data base from file...')
         self.open_db()
         try:
@@ -148,18 +157,23 @@ class mainDB(DbSql):
                         self.Sku = self.toRealType(self.file,self.headers)
                         if self.Sku == [0,]:
                             print('Update Success!')
+                            self.DBConnect.commit()
+                            self.DBConnect.close()
+                            return True
                             break
                         self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.main_table, tuple(self.headers), tuple(self.Sku)))
                     except sqlite3.IntegrityError:
                         print('Unique name error')
+                        self.DBConnect.close()
                         break
                     except sqlite3.OperationalError as Err:
                         writErr('updateDB: {}'.format(Err))
-
-            self.DBConnect.commit()
-            self.DBConnect.close()
+                        self.DBConnect.close()
+                        break
         except FileNotFoundError as Err:
             writErr('updateDB: {}'.format(Err))
+            return False
+        return False
 
     def sql_format_from_file(self, file):
         '''
@@ -246,9 +260,10 @@ class OrderDB(mainDB):
     def __init__(self, DBname, tabName):
         super(OrderDB, self).__init__(DBname, tabName)
         self.headers = 'sku, name, warehouse, suplayer, warehouse_code, moq, adu, bufer, bb_1, leftover, matrix, on_the_way, ob_index, opb_index'
+        self.condition = 'WHERE on_the_way<>0'
 
     def createmain_table(self,headersType):
-        #create new db table even if its exists
+        '''create new db table even if its not exists'''
         self.DBCursor.execute('CREATE TABLE IF NOT EXISTS {} {}'.format(self.main_table ,headersType))
         self.DBCursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS OrderedKey ON {} (sku, warehouse_code)'.format(self.main_table))
 
@@ -258,24 +273,30 @@ class OrderDB(mainDB):
         takes all rows with "on_the_way > 0" from mother-table to main_table in class
         '''
         self.open_db()
-        print('Starting update ordered sku...')
+        print(self.__class__.__name__, 'Starting update sku...', end='')
         headersList = self.headers.split(', ')
         headersType = self.typeAsembler(headersList)
 
         self.createmain_table(headersType) #create if not exists...
-
         self.DBCursor.execute('''
             INSERT OR REPLACE INTO {0}
-            SELECT {1} FROM {2} WHERE on_the_way<>0 ORDER BY suplayer
-            '''.format(self.main_table, self.headers, DBtable))
+            SELECT {1} FROM {2} {3} ORDER BY suplayer
+            '''.format(self.main_table, self.headers, DBtable, self.condition))
 
         self.DBConnect.commit()
         self.DBConnect.close()
-        print('update success!')
+        print('Update success!')
 
     def get_all_items(self, headers='warehouse_code, sku'):
         ''' return all items as list of headers '''
         return self.reqwest_to_db('SELECT {} FROM {}'.format(headers, self.main_table))
 
+class OverflowDB(OrderDB):
+    """takes all rows with "on_the_way > 0" from mother-table to main_table in class"""
+    def __init__(self, DBname, tabName):
+        super(OverflowDB, self).__init__(DBname, tabName)
+        self.condition = 'WHERE ob_index>100'
+
+        
 if __name__ == '__main__':
     pass

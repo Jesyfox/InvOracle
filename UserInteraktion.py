@@ -39,8 +39,31 @@ def toXlsFile(file, filename):
     path = 'OutputFiles\\'
     for row in file:
         ws.append(row)
-    wb.save(path + filename + '.xlsx')
+        try:
+            wb.save(path + filename + '.xlsx')
+        except PermissionError:
+            wb.save(path +  'CLOSE_ORIGINAL!_' + filename + '.xlsx')
+
+
+def progress_bar(countList):
+    """
+    return progress bar of list enumeration
+    howto:
+        1.name the variable with this func
+        2.print(var.__next__())
+    """
+    from copy import copy
+    LineCount = len(countList)
+    progres = copy(LineCount)
+    while progres >= 0:
+        progres = progres-1
+        ProgBar = float(100-(progres/LineCount)*100)
+        yield '{0:0.2f}%'.format(ProgBar)
 
 if __name__ == '__main__':
     #print(BrowseFile())
-    writErr('hello world')
+    LIST = [x**x for x in range(50)]
+    bar = progress_bar(LIST)
+    for i in LIST:
+        print(i, bar.__next__())
+

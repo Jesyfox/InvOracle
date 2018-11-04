@@ -95,17 +95,34 @@ class mainDB(DbSql):
         '''
         find items who need to be turn ON
         '''
-        from ConstAndOptions import NOT_ACTIVE, NOT_IN_INVENTORY
+        #from ConstAndOptions import NOT_ACTIVE, NOT_IN_INVENTORY
+        #get dict from json file
+        from openpyxl import Workbook
+        from JsonBridge import json_Bridge
+        NOT_ACTIVE = json_Bridge.get('NOT_ACTIVE')
+        NOT_IN_INVENTORY = json_Bridge.get('NOT_IN_INVENTORY')
+
+        path = 'OutputFiles\\'
+        filename = 'MTS_controll'
+        wb = Workbook()
+        ws = wb.active
+
         self.open_db()
         headers = 'sku, name, warehouse, matrix, nomenclature_1, warehouse_code'
-        nomencl = []
-        endFile = []
-        for row in self.DBCursor.execute("SELECT {} FROM {} WHERE mts=0 ORDER BY nomenclature_1".format(headers ,self.main_table)):
-            if row[2] in NOT_IN_INVENTORY or row[3] in NOT_ACTIVE:
+
+        main_list = list(self.DBCursor.execute(
+            "SELECT {} FROM {} WHERE mts=0 ORDER BY nomenclature_1".format(headers ,self.main_table)))
+
+        progres = self.progBar(main_list)
+
+        for row in main_list:
+            print(progres.__next__())
+            if row[headers.split(', ').index('warehouse')] in NOT_IN_INVENTORY or row[headers.split(', ').index('nomenclature_1')] in NOT_ACTIVE:
                 pass
             else:
-                endFile.append(row)
-        toXlsFile(endFile, 'turn_MTS_on')
+                ws.append(row)
+
+        wb.save(path + filename + '.xlsx')
 
     def createmain_table(self,headersType):
         #create new db table even if its exists
@@ -180,16 +197,22 @@ class mainDB(DbSql):
         rename headers to sql-like format given from constants
         '''
         from UserInteraktion import BrowseFile
-        from ConstAndOptions import HEADERS
+        #from ConstAndOptions import HEADERS
+        #get dict from json file
+        from JsonBridge import json_Bridge
+        HEADERS = json_Bridge.get('HEADERS')
+
         self.headers = list(file.readline().rstrip().split('";"'))
         self.headers[0], self.headers[-1] = self.headers[0][2:], self.headers[-1][:-1] # delete '\ufeff' in first and last element
         self.res = []
         self.headTemplate = HEADERS
         for self.header in self.headers:
             try:
+                #rename 
                 self.res.append(self.headTemplate[self.header])
             except KeyError as Err:
-                writErr('header {} not found in "headTemplate"'.format(Err))
+                writErr('header {} not found in "HEADERS"'.format(Err))
+                json_Bridge.new_header(Err)
                 return 0
         #print(self.res)
         return self.res
@@ -199,7 +222,10 @@ class mainDB(DbSql):
         detects type of header (first row in csv file), 
         combine them with constant and return to create a table 
         '''
-        from ConstAndOptions import HEADERS_TYPE
+        #from ConstAndOptions import HEADERS_TYPE
+        #get dict from json file
+        from JsonBridge import json_Bridge
+        HEADERS_TYPE = json_Bridge.get('HEADERS_TYPE')
 
         res = []
         toStr = '('
@@ -226,7 +252,10 @@ class mainDB(DbSql):
         '''
         convert string of csv file, using as sample headers
         '''
-        from ConstAndOptions import HEADERS_TYPE
+        #from ConstAndOptions import HEADERS_TYPE
+        #get dict from json file
+        from JsonBridge import json_Bridge
+        HEADERS_TYPE = json_Bridge.get('HEADERS_TYPE')
 
         self.sku = list(file.readline().rstrip().split('";"'))
         self.sku[0],self.sku[-1] = self.sku[0][1:2], self.sku[-1][:-1] # delete '"' symb at first and last

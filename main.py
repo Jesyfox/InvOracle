@@ -58,7 +58,8 @@ def main():
             
 #--------------------------------------------------------------------------------------------------------
         elif chose == '3':
-            pass
+            arrival_check = OC.Output_statistic(orderDB, SkuDB, 'arrival_check')
+            arrival_check.start_output()
 
         elif chose == '4':
             #testin

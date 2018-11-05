@@ -158,41 +158,44 @@ class mainDB(DbSql):
         '''
         print('Starting update main data base from file...')
         self.open_db()
-        try:
-            from UserInteraktion import BrowseFile
-            self.FILE = BrowseFile()
-            with open(self.FILE,'r', encoding="utf8") as self.file:
-                self.headers = self.sql_format_from_file(self.file) #transform headers contains in HEADERS var
-                self.SqlType = self.typeAsembler(self.headers) #determine the type of column
-                Bar = self.progBar(self.FILE)
-                self.createmain_table(self.SqlType)
-                print('Starting import!')
-                while True:
-                    try:
-                        print(Bar.__next__()) #progress bar
-
-                        self.Sku = self.toRealType(self.file,self.headers)
-                        if self.Sku == [0,]:
-                            print('Update Success!')
-                            self.DBConnect.commit()
-                            self.DBConnect.close()
-                            return True
-                            break
-                        self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.main_table, tuple(self.headers), tuple(self.Sku)))
-                    except sqlite3.IntegrityError:
-                        print('Unique name error')
+        from UserInteraktion import BrowseFile
+        self.FILE = BrowseFile()
+        with open(self.FILE,'r', encoding="utf8") as self.file:
+            raw_headers = list(self.file.readline().rstrip().split('";"'))
+            # delete '\ufeff' in first and last element
+            raw_headers[0], raw_headers[-1] = raw_headers[0][2:], raw_headers[-1][:-1]
+            #transform headers contains in HEADERS var
+            headers = self.sql_format_from_file(raw_headers)
+            # if func returns 0 that means new object was added to 
+            # ConstAndOptions.json and we need re'init the variable
+            if not headers:
+                print('o')
+                headers = self.sql_format_from_file(raw_headers)
+            # determine the type of column like - name is S(string) etc
+            self.SqlType = self.typeAsembler(headers)
+            # progress bar initial so that we can watch what our status
+            Bar = self.progBar(self.FILE)
+            self.createmain_table(self.SqlType)
+            print('Starting import!')
+            while True:
+                try:
+                    print(Bar.__next__()) #progress bar
+                    # rewrite shells to sql readable format
+                    Sku = self.toRealType(self.file, headers)
+                    if Sku == [0,]:
+                        print('Update Success!')
+                        self.DBConnect.commit()
                         self.DBConnect.close()
+                        return True
                         break
-                    except sqlite3.OperationalError as Err:
-                        writErr('updateDB: {}'.format(Err))
-                        self.DBConnect.close()
-                        break
-        except FileNotFoundError as Err:
-            writErr('updateDB: {}'.format(Err))
-            return False
+                    self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.main_table, tuple(headers), tuple(Sku)))
+                except sqlite3.IntegrityError:
+                    print('Unique name error')
+                    self.DBConnect.close()
+                    break
         return False
 
-    def sql_format_from_file(self, file):
+    def sql_format_from_file(self, headers):
         '''
         rename headers to sql-like format given from constants
         '''
@@ -202,14 +205,15 @@ class mainDB(DbSql):
         from JsonBridge import json_Bridge
         HEADERS = json_Bridge.get('HEADERS')
 
-        self.headers = list(file.readline().rstrip().split('";"'))
-        self.headers[0], self.headers[-1] = self.headers[0][2:], self.headers[-1][:-1] # delete '\ufeff' in first and last element
+        #headers = list(file.readline().rstrip().split('";"'))
+        # delete '\ufeff' in first and last element
+        #headers[0], headers[-1] = headers[0][2:], headers[-1][:-1]
         self.res = []
         self.headTemplate = HEADERS
-        for self.header in self.headers:
+        for header in headers:
             try:
                 #rename 
-                self.res.append(self.headTemplate[self.header])
+                self.res.append(self.headTemplate[header])
             except KeyError as Err:
                 writErr('header {} not found in "HEADERS"'.format(Err))
                 json_Bridge.new_header(Err)
@@ -257,28 +261,28 @@ class mainDB(DbSql):
         from JsonBridge import json_Bridge
         HEADERS_TYPE = json_Bridge.get('HEADERS_TYPE')
 
-        self.sku = list(file.readline().rstrip().split('";"'))
-        self.sku[0],self.sku[-1] = self.sku[0][1:2], self.sku[-1][:-1] # delete '"' symb at first and last
-        self.res = []
+        sku = list(file.readline().rstrip().split('";"'))
+        sku[0],sku[-1] = sku[0][1:2], sku[-1][:-1] # delete '"' symb at first and last
+        res = []
 
-        for self.SKU, self.header in zip(self.sku,self.headers):
+        for SKU, header in zip(sku, headers):
             try:
-                if HEADERS_TYPE[self.header] is 'S':
-                    self.res.append(str(self.SKU))
-                elif HEADERS_TYPE[self.header] is 'I':
+                if HEADERS_TYPE[header] is 'S':
+                    res.append(str(SKU))
+                elif HEADERS_TYPE[header] is 'I':
                     #print(header)
-                    if self.SKU is '': self.res.append(0)
-                    elif self.SKU[-1] is '%': self.res.append(int(self.SKU[0:-1])) #'opb' col correcting
-                    else: self.res.append(int(self.SKU))
-                elif HEADERS_TYPE[self.header] is 'F':
+                    if SKU is '': res.append(0)
+                    elif SKU[-1] is '%': res.append(int(SKU[0:-1])) #'opb' col correcting
+                    else: res.append(int(SKU))
+                elif HEADERS_TYPE[header] is 'F':
                     #print(header)
-                    if self.SKU is '': self.res.append(0.0)
-                    else: self.res.append(float(self.SKU))
+                    if SKU is '': res.append(0.0)
+                    else: res.append(float(SKU))
                 else:
                     print('ERROR!: you cant be here!')
             except KeyError as Err:
                 writErr('"toRealType": missing {} in HEADERS_TYPE'.format(Err))
-        return self.res
+        return res
 
     def getLenFile(self, file):
         with open(file,'r', encoding="utf8") as file:

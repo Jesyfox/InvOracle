@@ -162,16 +162,27 @@ class mainDB(DbSql):
             from UserInteraktion import BrowseFile
             self.FILE = BrowseFile()
             with open(self.FILE,'r', encoding="utf8") as self.file:
-                self.headers = self.sql_format_from_file(self.file) #transform headers contains in HEADERS var
-                self.SqlType = self.typeAsembler(self.headers) #determine the type of column
+                raw_headers = list(self.file.readline().rstrip().split('";"'))
+                # delete '\ufeff' in first and last element
+                raw_headers[0], raw_headers[-1] = raw_headers[0][2:], raw_headers[-1][:-1]
+                #transform headers contains in HEADERS var
+                headers = self.sql_format_from_file(raw_headers)
+                # if func returns 0 that means new object was added to 
+                # ConstAndOptions.json and we need re'init the variable
+                if not headers:
+                    print('o')
+                    headers = self.sql_format_from_file(raw_headers)
+                # determine the type of column like - name is S(string) etc
+                self.SqlType = self.typeAsembler(headers)
+                # progress bar initial so that we can watch what our status
                 Bar = self.progBar(self.FILE)
                 self.createmain_table(self.SqlType)
                 print('Starting import!')
                 while True:
                     try:
                         print(Bar.__next__()) #progress bar
-
-                        self.Sku = self.toRealType(self.file,self.headers)
+                        # rewrite shells to sql readeble format
+                        self.Sku = self.toRealType(self.file, headers)
                         if self.Sku == [0,]:
                             print('Update Success!')
                             self.DBConnect.commit()
@@ -192,7 +203,7 @@ class mainDB(DbSql):
             return False
         return False
 
-    def sql_format_from_file(self, file):
+    def sql_format_from_file(self, headers):
         '''
         rename headers to sql-like format given from constants
         '''
@@ -202,14 +213,15 @@ class mainDB(DbSql):
         from JsonBridge import json_Bridge
         HEADERS = json_Bridge.get('HEADERS')
 
-        self.headers = list(file.readline().rstrip().split('";"'))
-        self.headers[0], self.headers[-1] = self.headers[0][2:], self.headers[-1][:-1] # delete '\ufeff' in first and last element
+        #headers = list(file.readline().rstrip().split('";"'))
+        # delete '\ufeff' in first and last element
+        #headers[0], headers[-1] = headers[0][2:], headers[-1][:-1]
         self.res = []
         self.headTemplate = HEADERS
-        for self.header in self.headers:
+        for header in headers:
             try:
                 #rename 
-                self.res.append(self.headTemplate[self.header])
+                self.res.append(self.headTemplate[header])
             except KeyError as Err:
                 writErr('header {} not found in "HEADERS"'.format(Err))
                 json_Bridge.new_header(Err)

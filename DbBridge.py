@@ -158,6 +158,7 @@ class mainDB(DbSql):
         '''
         print('Starting update main data base from file...')
         self.open_db()
+<<<<<<< HEAD
         from UserInteraktion import BrowseFile
         self.FILE = BrowseFile()
         with open(self.FILE,'r', encoding="utf8") as self.file:
@@ -185,6 +186,46 @@ class mainDB(DbSql):
                     if Sku == [0,]:
                         print('Update Success!')
                         self.DBConnect.commit()
+=======
+        try:
+            from UserInteraktion import BrowseFile
+            self.FILE = BrowseFile()
+            with open(self.FILE,'r', encoding="utf8") as self.file:
+                raw_headers = list(self.file.readline().rstrip().split('";"'))
+                # delete '\ufeff' in first and last element
+                raw_headers[0], raw_headers[-1] = raw_headers[0][2:], raw_headers[-1][:-1]
+                #transform headers contains in HEADERS var
+                headers = self.sql_format_from_file(raw_headers)
+                # if func returns 0 that means new object was added to 
+                # ConstAndOptions.json and we need re'init the variable
+                if not headers:
+                    print('o')
+                    headers = self.sql_format_from_file(raw_headers)
+                # determine the type of column like - name is S(string) etc
+                self.SqlType = self.typeAsembler(headers)
+                # progress bar initial so that we can watch what our status
+                Bar = self.progBar(self.FILE)
+                self.createmain_table(self.SqlType)
+                print('Starting import!')
+                while True:
+                    try:
+                        print(Bar.__next__()) #progress bar
+                        # rewrite shells to sql readeble format
+                        self.Sku = self.toRealType(self.file, headers)
+                        if self.Sku == [0,]:
+                            print('Update Success!')
+                            self.DBConnect.commit()
+                            self.DBConnect.close()
+                            return True
+                            break
+                        self.DBCursor.execute('INSERT OR REPLACE INTO {} {} VALUES {}'.format(self.main_table, tuple(self.headers), tuple(self.Sku)))
+                    except sqlite3.IntegrityError:
+                        print('Unique name error')
+                        self.DBConnect.close()
+                        break
+                    except sqlite3.OperationalError as Err:
+                        writErr('updateDB: {}'.format(Err))
+>>>>>>> 93be35d50c321158febbd943a23e4aadff3a2c98
                         self.DBConnect.close()
                         return True
                         break
